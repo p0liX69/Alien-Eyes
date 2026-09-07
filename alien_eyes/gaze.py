@@ -16,17 +16,20 @@ class GazeTracker:
         damping=config.DAMPING,
         lock_on_ms=config.LOCK_ON_MS,
         switch_threshold=config.LOCK_SWITCH_THRESHOLD,
+        face_lost_grace_ms=config.FACE_LOST_GRACE_MS,
         cascade_path=None,
     ):
         self.damping = damping
         self.lock_on_ms = lock_on_ms
         self.switch_threshold = switch_threshold
+        self.face_lost_grace_ms = face_lost_grace_ms
 
         self.tx = 0.0
         self.ty = 0.0
         self._lock_goal = None
         self._pending_goal = None
         self._pending_since = None
+        self._lost_since = None
 
         path = cascade_path or (cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
         self._cascade = cv2.CascadeClassifier(path)
@@ -50,11 +53,18 @@ class GazeTracker:
             ny = ((y + h / 2) / frame_height) * 2 - 1
             goal = (-nx, ny)
             self._track_lock(goal, now)
+            self._lost_since = None
+            target = self._lock_goal
+        elif self._lock_goal is not None and self._within_lost_grace(now):
+            # Detector dropout (e.g. a Haar cascade flickering frame-to-frame on a
+            # stationary face) — hold the last known position instead of snapping
+            # toward the idle scan.
             target = self._lock_goal
         else:
             self._lock_goal = None
             self._pending_goal = None
             self._pending_since = None
+            self._lost_since = None
             target = self._fallback_goal(now)
 
         self.tx += (target[0] - self.tx) * self.damping
@@ -83,6 +93,11 @@ class GazeTracker:
             self._lock_goal = goal
             self._pending_goal = None
             self._pending_since = None
+
+    def _within_lost_grace(self, now):
+        if self._lost_since is None:
+            self._lost_since = now
+        return now - self._lost_since < self.face_lost_grace_ms / 1000.0
 
     def _fallback_goal(self, now):
         return (

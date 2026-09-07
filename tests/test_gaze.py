@@ -71,3 +71,25 @@ def test_lock_on_switches_after_sustained_presence():
         gx, gy = tracker.update_from_faces([FACE_RIGHT], FRAME_W, FRAME_H, now)
 
     assert gx == pytest.approx(-0.75, abs=0.02)
+
+
+def test_lock_survives_single_frame_detector_dropouts():
+    # Real detectors (Haar cascade) flicker frame-to-frame even on a stationary face.
+    # A single missed-detection frame must not yank the gaze toward the idle scan.
+    tracker = GazeTracker()
+    dt = 1.0 / 15.0  # realistic frame spacing
+
+    now = 0.0
+    gx = 0.0
+    gx_prev = 0.0
+    saw_backward_step = False
+    for i in range(60):  # 4 seconds at 15fps
+        faces = [FACE_LEFT] if i % 2 == 0 else []  # detector flickers every other frame
+        gx, gy = tracker.update_from_faces(faces, FRAME_W, FRAME_H, now)
+        if gx < gx_prev - 1e-9:
+            saw_backward_step = True
+        gx_prev = gx
+        now += dt
+
+    assert not saw_backward_step
+    assert gx == pytest.approx(0.5, abs=0.02)
