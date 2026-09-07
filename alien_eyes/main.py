@@ -9,7 +9,7 @@ def is_raspberry_pi():
     try:
         with open("/proc/device-tree/model") as f:
             return "raspberry pi" in f.read().lower()
-    except FileNotFoundError:
+    except OSError:
         return False
 
 
@@ -42,15 +42,17 @@ def build_output(backend):
 
 
 def run(capture, output, tracker):
-    while not output.should_quit():
-        frame = capture.read()
-        if frame is None:
-            continue
-        gx, gy = tracker.update(frame)
-        img = render.draw_eye(gx, gy)
-        output.push(img)
-    capture.close()
-    output.close()
+    try:
+        while not output.should_quit():
+            frame = capture.read()
+            if frame is None:
+                continue
+            gx, gy = tracker.update(frame)
+            img = render.draw_eye(gx, gy)
+            output.push(img)
+    finally:
+        capture.close()
+        output.close()
 
 
 def parse_args(argv=None):

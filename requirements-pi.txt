@@ -1,4 +1,5 @@
 -r requirements-common.txt
 adafruit-circuitpython-gc9a01a
 adafruit-blinka
-picamera2
+# picamera2 is NOT pip-installed here — it depends on system libcamera and should
+# come from the OS via `python3 -m venv .venv --system-site-packages` (see README.md)
