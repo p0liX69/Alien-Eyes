@@ -1,0 +1,4 @@
+-r requirements-common.txt
+adafruit-circuitpython-gc9a01a
+adafruit-blinka
+picamera2
