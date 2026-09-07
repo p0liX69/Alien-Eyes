@@ -54,4 +54,7 @@ class GazeTracker:
         return self.tx, self.ty
 
     def _fallback_goal(self, now):
-        return (math.sin(now * 0.3) * 0.6, math.sin(now * 0.21) * 0.3)
+        return (
+            math.sin(now * config.FALLBACK_SCAN_SPEED_X) * config.FALLBACK_SCAN_AMPLITUDE_X,
+            math.sin(now * config.FALLBACK_SCAN_SPEED_Y) * config.FALLBACK_SCAN_AMPLITUDE_Y,
+        )
