@@ -6,6 +6,10 @@ import cv2
 from alien_eyes import config
 
 
+def _distance(a, b):
+    return math.hypot(a[0] - b[0], a[1] - b[1])
+
+
 class GazeTracker:
     def __init__(
         self,
@@ -21,6 +25,8 @@ class GazeTracker:
         self.tx = 0.0
         self.ty = 0.0
         self._lock_goal = None
+        self._pending_goal = None
+        self._pending_since = None
 
         path = cascade_path or (cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
         self._cascade = cv2.CascadeClassifier(path)
@@ -43,15 +49,40 @@ class GazeTracker:
             nx = ((x + w / 2) / frame_width) * 2 - 1
             ny = ((y + h / 2) / frame_height) * 2 - 1
             goal = (-nx, ny)
-            self._lock_goal = goal
+            self._track_lock(goal, now)
             target = self._lock_goal
         else:
             self._lock_goal = None
+            self._pending_goal = None
+            self._pending_since = None
             target = self._fallback_goal(now)
 
         self.tx += (target[0] - self.tx) * self.damping
         self.ty += (target[1] - self.ty) * self.damping
         return self.tx, self.ty
+
+    def _track_lock(self, goal, now):
+        if self._lock_goal is None:
+            self._lock_goal = goal
+            self._pending_goal = None
+            self._pending_since = None
+            return
+
+        if _distance(goal, self._lock_goal) <= self.switch_threshold:
+            self._lock_goal = goal
+            self._pending_goal = None
+            self._pending_since = None
+            return
+
+        if self._pending_goal is None or _distance(goal, self._pending_goal) > self.switch_threshold:
+            self._pending_goal = goal
+            self._pending_since = now
+            return
+
+        if now - self._pending_since >= self.lock_on_ms / 1000.0:
+            self._lock_goal = goal
+            self._pending_goal = None
+            self._pending_since = None
 
     def _fallback_goal(self, now):
         return (
