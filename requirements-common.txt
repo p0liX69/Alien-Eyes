@@ -1,4 +1,4 @@
-opencv-python>=4.9
+opencv-python>=4.9,<5.0  # 5.0.0 dropped/moved cv2.CascadeClassifier
 pillow>=10.0
 numpy>=1.26
 pytest>=8.0
