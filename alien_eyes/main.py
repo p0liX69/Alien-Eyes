@@ -1,7 +1,8 @@
 # alien_eyes/main.py
 import argparse
+import time
 
-from alien_eyes import render
+from alien_eyes import config, render
 from alien_eyes.gaze import GazeTracker
 
 
@@ -42,14 +43,19 @@ def build_output(backend):
 
 
 def run(capture, output, tracker):
+    frame_budget = 1.0 / config.TARGET_FPS
     try:
         while not output.should_quit():
+            frame_start = time.perf_counter()
             frame = capture.read()
             if frame is None:
                 continue
             gx, gy = tracker.update(frame)
             img = render.draw_eye(gx, gy)
             output.push(img)
+            remaining = frame_budget - (time.perf_counter() - frame_start)
+            if remaining > 0:
+                time.sleep(remaining)
     finally:
         capture.close()
         output.close()
